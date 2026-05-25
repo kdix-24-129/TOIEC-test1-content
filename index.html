@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEIC 英単語・表現マスター v8.2</title>
+    <!-- Tailwind CSS (動作実績のあるCDNを使用) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .custom-shadow { box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.08), 0 8px 10px -6px rgba(59, 130, 246, 0.08); }
+        .fade-in { animation: fadeIn 0.25s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-12">
+
+    <!-- ナビゲーションバー -->
+    <header class="bg-blue-600 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-lg font-black flex items-center gap-2 tracking-wider">
+                <i class="fa-solid fa-graduation-cap"></i> TOEIC MASTER v8.2
+            </h1>
+            <div id="header-actions" class="hidden">
+                <button onclick="confirmExit()" class="bg-blue-700 hover:bg-blue-800 text-white px-3 py-1.5 rounded-xl text-sm font-bold transition duration-150 flex items-center gap-1 shadow-inner border border-blue-500 cursor-pointer">
+                    <i class="fa-solid fa-arrow-left"></i> 中断して戻る
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-6">
+        
+        <!-- 1. ホーム画面（大判カテゴリ選択 & 10問セクション分割） -->
+        <section id="home-view" class="block fade-in">
+            <!-- 総合概要 -->
+            <div class="bg-white p-6 rounded-2xl custom-shadow mb-8 border border-blue-50 text-center sm:text-left">
+                <h2 class="text-sm font-extrabold text-slate-400 uppercase tracking-widest mb-3">全体の学習進捗状況</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
+                    <div class="bg-blue-50/70 p-3 rounded-2xl border border-blue-100">
+                        <p class="text-xs text-slate-500 font-bold mb-1">総登録単語数</p>
+                        <p id="total-words-count" class="text-xl sm:text-2xl font-black text-blue-600">196</p>
+                    </div>
+                    <div class="bg-red-50/70 p-3 rounded-2xl border border-red-100">
+                        <p class="text-xs text-slate-500 font-bold mb-1">現在の苦手単語</p>
+                        <p id="total-weak-count" class="text-xl sm:text-2xl font-black text-red-500">0</p>
+                    </div>
+                    <div class="bg-emerald-50/70 p-3 rounded-2xl border border-emerald-100 col-span-2 sm:col-span-1">
+                        <p class="text-xs text-slate-500 font-bold mb-1">マスター済みセクション</p>
+                        <p id="total-mastered-sections" class="text-xl sm:text-2xl font-black text-emerald-600">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主題別大判セクションリスト（JSで自動生成） -->
+            <div id="sections-container" class="space-y-8">
+                <!-- ここに主題ヘッダーと各セクションカードが10問ずつ自動配置されます -->
+            </div>
+        </section>
+
+        <!-- 2. クイズ画面 -->
+        <section id="quiz-view" class="hidden fade-in">
+            <!-- プログレスバー -->
+            <div class="w-full bg-slate-200 h-2.5 rounded-full mb-6 overflow-hidden">
+                <div id="quiz-progress" class="bg-blue-500 h-2.5 transition-all duration-300" style="width: 0%"></div>
+            </div>
+
+            <!-- 情報表示 -->
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span id="quiz-subject" class="text-xs font-bold bg-blue-100 text-blue-800 px-2.5 py-1 rounded-lg border border-blue-200">カテゴリ</span>
+                    <span id="quiz-title" class="text-xs font-bold bg-blue-600 text-white px-2.5 py-1 rounded-lg border border-blue-700">Section -</span>
+                    <span id="quiz-number" class="text-xs font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200">No. -</span>
+                </div>
+                <span id="quiz-counter" class="text-sm font-bold text-slate-500">1 / 10 問目</span>
+            </div>
+
+            <!-- クイズカード -->
+            <div class="bg-white rounded-2xl custom-shadow border border-slate-100 p-6 md:p-8 mb-6">
+                <!-- 英語フレーズ・例文表示エリア -->
+                <div class="space-y-6">
+                    <div>
+                        <span class="text-xs font-extrabold uppercase tracking-widest text-blue-500 block mb-2"><i class="fa-solid fa-quote-left mr-1"></i> フレーズ</span>
+                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 text-center">
+                            <!-- フレーズ内の対象単語を赤字ハイライトした英文 -->
+                            <p id="quiz-phrase-box" class="text-lg md:text-xl font-bold text-slate-800 leading-relaxed mb-4">---</p>
+                            <!-- プレースホルダー(____) -->
+                            <p class="text-3xl font-black text-red-500 tracking-widest select-none">(____)</p>
+                            <p class="text-xs text-slate-400 font-bold mt-2">※ 赤字部分の「日本語訳」を思い出してください。</p>
+                        </div>
+                    </div>
+
+                    <!-- 補足としての実践例文表示 -->
+                    <div>
+                        <span class="text-xs font-extrabold uppercase tracking-widest text-slate-400 block mb-2"><i class="fa-solid fa-paragraph mr-1"></i> 実践例文</span>
+                        <div id="quiz-example-box" class="text-base md:text-lg font-medium text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100 min-h-[64px] flex items-center">
+                            ---
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 答えセクション（答えボタンを押すまで非表示） -->
+                <div id="quiz-answer-section" class="hidden border-t border-slate-100 pt-6 mt-6 fade-in space-y-6">
+                    <div class="text-center bg-emerald-50 border border-emerald-100 rounded-2xl py-4">
+                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 block mb-1">正解の日本語訳</span>
+                        <h4 id="quiz-correct-meaning" class="text-2xl md:text-3xl font-black text-emerald-600 tracking-wide">ーーー</h4>
+                    </div>
+
+                    <div class="bg-slate-50 text-slate-700 p-4 rounded-xl border border-slate-200 text-sm space-y-3">
+                        <div>
+                            <span class="text-xs font-bold text-slate-400 block mb-0.5">フレーズの和訳</span>
+                            <p id="quiz-phrase-translation" class="font-bold text-slate-800"></p>
+                        </div>
+                        <div class="border-t border-slate-200 my-2"></div>
+                        <div>
+                            <span class="text-xs font-bold text-slate-400 block mb-0.5">例文の和訳</span>
+                            <p id="quiz-example-translation" class="font-medium text-slate-600"></p>
+                        </div>
+                    </div>
+
+                    <!-- 音声再生ボタン -->
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button onclick="speakText(true)" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white px-4 py-3 rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition duration-150 cursor-pointer shadow-md">
+                            <i class="fa-solid fa-volume-high"></i> フレーズ全体を聴く
+                        </button>
+                        <button onclick="speakText(false)" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-4 py-3 rounded-xl text-sm font-bold flex justify-center items-center gap-2 transition duration-150 cursor-pointer">
+                            <i class="fa-solid fa-volume-low"></i> 単語のみを聴く
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作ボタンエリア -->
+            <div id="quiz-action-before" class="block">
+                <button onclick="revealAnswer()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-4 rounded-xl shadow-lg transition duration-150 cursor-pointer flex justify-center items-center gap-2 text-lg border-b-4 border-blue-800 active:border-b-0 active:translate-y-1">
+                    <i class="fa-solid fa-eye"></i> 答えを見る
+                </button>
+            </div>
+
+            <div id="quiz-action-after" class="hidden grid grid-cols-2 gap-4">
+                <button onclick="submitJudgment(false)" class="bg-red-500 hover:bg-red-600 text-white font-extrabold py-4 rounded-xl shadow-md transition duration-150 cursor-pointer flex justify-center items-center gap-2 text-lg border-b-4 border-red-700 active:border-b-0 active:translate-y-1">
+                    <i class="fa-solid fa-xmark text-xl"></i> ✕ 違った
+                </button>
+                <button onclick="submitJudgment(true)" class="bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold py-4 rounded-xl shadow-md transition duration-150 cursor-pointer flex justify-center items-center gap-2 text-lg border-b-4 border-emerald-700 active:border-b-0 active:translate-y-1">
+                    <i class="fa-solid fa-check text-xl"></i> ◯ 合ってた
+                </button>
+            </div>
+        </section>
+
+        <!-- 3. 結果画面 -->
+        <section id="result-view" class="hidden fade-in text-center py-8">
+            <div class="max-w-md mx-auto bg-white rounded-2xl custom-shadow border border-slate-100 p-8">
+                <div class="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl">
+                    <i class="fa-solid fa-ranking-star"></i>
+                </div>
+                <h2 class="text-2xl font-black text-slate-900 mb-2">セクション完了！</h2>
+                <p id="result-meta" class="text-sm font-bold text-slate-500 mb-6 border-b border-slate-100 pb-4">Category Section</p>
+                
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-8 flex justify-around">
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 block mb-1">正解した単語</span>
+                        <span id="result-correct" class="text-3xl font-black text-emerald-600">0</span>
+                    </div>
+                    <div class="border-r border-slate-200"></div>
+                    <div>
+                        <span class="text-xs font-bold text-slate-400 block mb-1">間違えた単語</span>
+                        <span id="result-wrong" class="text-3xl font-black text-red-500">0</span>
+                    </div>
+                </div>
+
+                <button onclick="backToHome()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md transition duration-150 cursor-pointer border-b-4 border-blue-800 active:border-b-0 active:translate-y-1">
+                    ホーム画面に戻る
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JSデータおよびロジック -->
+    <script>
+        // 完全なTOEIC単語マスターデータ (全196語)
+        const wordData = [
+            // --- 公式問題集12 (1〜164) ---
+            { id: 1, subject: "公式問題集12", num: "-", word: "Revenue", meaning: "収益、売上高", phrase: "boost annual revenue", phrase_translation: "年間収益を押し上げる", example: "The company's quarterly revenue exceeded all expectations.", example_translation: "その会社の四半期収益はすべての予想を上回った。", targetMatch: "revenue" },
+            { id: 2, subject: "公式問題集12", num: "-", word: "vicious cycle", meaning: "悪循環", phrase: "break the vicious cycle", phrase_translation: "悪循環を断ち切る", example: "High stress leads to poor sleep, creating a vicious cycle.", example_translation: "強いストレスは睡眠不足を招き、悪循環を生み出す。", targetMatch: "vicious cycle" },
+            { id: 3, subject: "公式問題集12", num: "-", word: "Disparity", meaning: "格差、不一致", phrase: "economic disparity", phrase_translation: "経済的格差", example: "There is a huge disparity between the two financial reports.", example_translation: "2つの財務報告書の間には大きな隔たりがある。", targetMatch: "disparity" },
+            { id: 4, subject: "公式問題集12", num: "-", word: "Worthwhile", meaning: "価値のある、やりがいのある", phrase: "a worthwhile project", phrase_translation: "やる価値のあるプロジェクト", example: "It is worthwhile to double-check the figures before submission.", example_translation: "提出前に数字を再確認することは価値がある。", targetMatch: "worthwhile" },
+            { id: 5, subject: "公式問題集12", num: "-", word: "Rural", meaning: "田舎の、地方の", phrase: "a rural community", phrase_translation: "地方の共同体、田舎の地域", example: "The government plans to improve public transport in rural areas.", example_translation: "政府は地方の公共交通機関を改善することを計画している。", targetMatch: "rural" },
+            { id: 6, subject: "公式問題集12", num: "-", word: "Thoroughly", meaning: "徹底的に、完全に", phrase: "thoroughly investigate the issue", phrase_translation: "問題を徹底的に調査する", example: "Please review the contract thoroughly before signing it.", example_translation: "署名する前に契約書を完全に確認してください。", targetMatch: "thoroughly" },
+            { id: 7, subject: "公式問題集12", num: "-", word: "Burglary", meaning: "泥棒、空き巣", phrase: "commit a burglary", phrase_translation: "空き巣を働く", example: "The security system was installed to prevent burglaries.", example_translation: "空き巣を防ぐためにセキュリティシステムが設置された。", targetMatch: "burglary|burglaries" },
+            { id: 8, subject: "公式問題集12", num: "-", word: "There is no point -ing", meaning: "〜するのは無駄である", phrase: "There is no point arguing about it.", phrase_translation: "それについて議論しても無駄だ。", example: "There is no point waiting for the bus, let’s take a taxi.", example_translation: "バスを待っても無駄だから、タクシーに乗ろう。", targetMatch: "There is no point" },
+            { id: 9, subject: "公式問題集12", num: "-", word: "cause", meaning: "大義、目的、原因", phrase: "support a good cause", phrase_translation: "慈善目的[大義]を支援する", example: "The heavy rain was the primary cause of the shipping delay.", example_translation: "大雨が出荷遅延の主な原因だった。", targetMatch: "cause" },
+            { id: 10, subject: "公式問題集12", num: "-", word: "extension", meaning: "内線、延長", phrase: "reach someone at extension 204", phrase_translation: "内線204番で（人に）連絡がつく", example: "We requested a one-week extension on the project deadline.", example_translation: "私たちはプロジェクトの締め切りについて1週間の延長を要請した。", targetMatch: "extension" },
+            { id: 11, subject: "公式問題集12", num: "-", word: "Or", meaning: "すなわち、言い換えれば", phrase: "the deep ocean, or the abyss", phrase_translation: "深海、すなわちアビス", example: "Is the meeting scheduled for Tuesday or Wednesday?", example_translation: "会議は火曜日ですか、それとも水曜日ですか？", targetMatch: "or" },
+            { id: 12, subject: "公式問題集12", num: "-", word: "Familiar with", meaning: "〜をよく知っている", phrase: "be familiar with the software", phrase_translation: "そのソフトウェアに習熟している", example: "His face looks familiar to me, but I cannot recall his name.", example_translation: "彼の顔には見覚えがあるが、名前が思い出せない。", targetMatch: "familiar with|familiar" },
+            { id: 13, subject: "公式問題集12", num: "-", word: "function", meaning: "パーティー、イベント、機能", phrase: "attend a formal function", phrase_translation: "公式なパーティーに出席する", example: "The main function of this department is to control quality.", example_translation: "この部門の主な機能は品質を管理することです。", targetMatch: "function" },
+            { id: 14, subject: "公式問題集12", num: "-", word: "quote", meaning: "価格を提示する、見積もる", phrase: "quote a price for repairs", phrase_translation: "修理の価格を提示する", example: "The salesperson quoted a lower rate to seal the deal.", example_translation: "販売員は契約をまとめるために、より低い価格を提示した。", targetMatch: "quote|quoted" },
+            { id: 15, subject: "公式問題集12", num: "-", word: "the few", meaning: "少人数、少数", phrase: "one of the few experts", phrase_translation: "数少ない専門家の一人", example: "The meeting was attended by the few members who remained.", example_translation: "会議には、残った少人数のメンバーが出席した。", targetMatch: "the few" },
+            { id: 16, subject: "公式問題集12", num: "-", word: "disclose", meaning: "開示する、公表する", phrase: "disclose financial records", phrase_translation: "財務記録を開示する", example: "The company refused to disclose the details of the contract.", example_translation: "その会社は契約の詳細を公表することを拒んだ。", targetMatch: "disclose" },
+            { id: 17, subject: "公式問題集12", num: "2", word: "Reach for", meaning: "〜に手を伸ばす", phrase: "reach for a product on the shelf", phrase_translation: "棚 of 製品に手を伸ばす", example: "Leaders should always reach for higher standards of quality.", example_translation: "指導者は常に、より高い品質基準を目指すべきだ[手を伸ばすべきだ]。", targetMatch: "reach for" },
+            { id: 18, subject: "公式問題集12", num: "3", word: "post", meaning: "〜（掲示物）を貼る", phrase: "post a notice on the board", phrase_translation: "掲示板に通知を貼る", example: "The HR department will post the job opening online tomorrow.", example_translation: "人事部は明日、求人情報をネットに掲載する予定だ。", targetMatch: "post" },
+            { id: 19, subject: "公式問題集12", num: "3", word: "wooded", meaning: "樹木が生い茂る", phrase: "a heavily wooded area", phrase_translation: "木々がうっそうと生い茂るエリア", example: "A narrow path winds through the wooded hills behind the office.", example_translation: "オフィスの裏にある木々の生い茂る丘を細い道がうねっている。", targetMatch: "wooded" },
+            { id: 20, subject: "公式問題集12", num: "3", word: "stacked", meaning: "〜が積み上げられている", phrase: "boxes stacked in the hallway", phrase_translation: "廊下に積み上げられた箱", example: "The inventory was neatly stacked on the warehouse shelves.", example_translation: "在庫は倉庫の棚に整然と積み重ねられていた。", targetMatch: "stacked" },
+            { id: 21, subject: "公式問題集12", num: "3", word: "clearing", meaning: "空き地、林間空地", phrase: "gather in a forest clearing", phrase_translation: "森の空き地に集まる", example: "The builders chose a natural clearing to set up the camp.", example_translation: "建設業者たちはキャンプを設営するために自然の空き地を選んだ。", targetMatch: "clearing" },
+            { id: 22, subject: "公式問題集12", num: "5", word: "untangle", meaning: "〜のもつれをほどく", phrase: "untangle the cables", phrase_translation: "ケーブルのもつれをほどく", example: "It took hours for the lawyer to untangle the legal problem.", example_translation: "弁護士がその法律問題を解決する[紐解く]のに数時間かかった。", targetMatch: "untangle" },
+            { id: 23, subject: "公式問題集12", num: "6", word: "lean against", meaning: "〜にもたれる", phrase: "lean against the wall", phrase_translation: "壁にもたれかかる", example: "Do not lean heavy equipment against the glass partition.", example_translation: "ガラスの仕切りに重い機材をもたせ掛けないでください。", targetMatch: "lean against" },
+            { id: 24, subject: "公式問題集12", num: "10/140", word: "plenty of / a number of / a host of", meaning: "たくさんの〜", phrase: "plenty of time to prepare", phrase_translation: "準備するための十分な時間", example: "There are a host of factors to consider before investing.", example_translation: "投資する前に考慮すべき非常に多くの要因があります。", targetMatch: "plenty of|a host of|a number of" },
+            { id: 25, subject: "公式問題集12", num: "10", word: "storage closet", meaning: "保管庫、収納クローゼット", phrase: "keep supplies in the storage closet", phrase_translation: "備品を保管庫に入れておく", example: "The key to the storage closet is kept at the front desk.", example_translation: "保管庫の鍵はフロントで預かっています。", targetMatch: "storage closet" },
+            { id: 26, subject: "公式問題集12", num: "13", word: "extension cord", meaning: "延長コード", phrase: "plug into an extension cord", phrase_translation: "延長コードにプラグを差し込む", example: "We need a longer extension cord to reach the projector.", example_translation: "プロジェクターまで届かせるために、もっと長い延長コードが必要です。", targetMatch: "extension cord" },
+            { id: 27, subject: "公式問題集12", num: "16", word: "suite", meaning: "室、室番号、続き部屋", phrase: "visit the executive suite", phrase_translation: "役員室を訪れる", example: "Our office is located in Suite 502 on the fifth floor.", example_translation: "当社のオフィスは5階の502号室にあります。", targetMatch: "suite|Suite" },
+            { id: 28, subject: "公式問題集12", num: "19", word: "not until tomorrow", meaning: "明日になってから", phrase: "The results won't be ready until tomorrow.", phrase_translation: "結果が出るのは明日になってからです。", example: "I cannot confirm the flight details until tomorrow.", example_translation: "明日にならないとフライトの詳細を確認できません。", targetMatch: "until tomorrow" },
+            { id: 29, subject: "公式問題集12", num: "22", word: "Would you recommend -?", meaning: "〜をおすすめしますか？", phrase: "Would you recommend this restaurant?", phrase_translation: "このレストランを勧めますか？", example: "Which laptop model would you recommend for video editing?", example_translation: "動画編集用にはどのノートPCのモデルを勧めますか？", targetMatch: "Would you recommend" },
+            { id: 30, subject: "公式問題集12", num: "23/121", word: "board of directors / board meeting", meaning: "理事会、取締役会、役員会議", phrase: "present a plan to the board of directors", phrase_translation: "取締役会に計画を提示する", example: "The board meeting has been postponed until next Thursday.", example_translation: "取締役会[役員会議]は来週の木曜日まで延期されました。", targetMatch: "board of directors|board meeting" },
+            { id: 31, subject: "公式問題集12", num: "23", word: "news", meaning: "ニュース ※発音はニュース", phrase: "broadcast the breaking news", phrase_translation: "ニュース速報を放送する", example: "No news is good news when waiting for the test results.", example_translation: "テストの結果を待つ間は、便りがないのは良い便りだ。", targetMatch: "news" },
+            { id: 32, subject: "公式問題集12", num: "24", word: "fund-raising", meaning: "資金調達、チャリティ", phrase: "organize a fund-raising event", phrase_translation: "資金調達イベントを主催する", example: "The museum relies on fund-raising to maintain its collection.", example_translation: "その美術館はコレクションを維持するために資金調達に頼っている。", targetMatch: "fund-raising" },
+            { id: 33, subject: "公式問題集12", num: "25", word: "finance", meaning: "財務、融資、資金を調達する", phrase: "corporate finance department", phrase_translation: "企業の財務部門", example: "The bank agreed to finance the construction of the new factory.", example_translation: "銀行は新工場の建設に資金を融資することに同意した。", targetMatch: "finance" },
+            { id: 34, subject: "公式問題集12", num: "27", word: "admission", meaning: "入場料、入場", phrase: "free admission for students", phrase_translation: "学生は入場無料", example: "Gaining admission to the conference requires a valid pass.", example_translation: "会議への入場には有効なパスが必要です。", targetMatch: "admission" },
+            { id: 35, subject: "公式問題集12", num: "33", word: "I can -", meaning: "私が〜しましょうか、〜できます", phrase: "I can check the schedule for you.", phrase_translation: "私が代わりにスケジュールを確認しましょうか。", example: "You can contact me anytime if you have any questions.", example_translation: "質問があればいつでも連絡してくれて構いません。", targetMatch: "I can|You can" },
+            { id: 36, subject: "公式問題集12", num: "35", word: "line of", meaning: "（製品の）シリーズ、〜の列", phrase: "launch a new line of cosmetics", phrase_translation: "新しい化粧品シリーズを発売する", example: "We waited in a long line of cars at the border.", example_translation: "私たちは国境で車の長い列に並んで待った。", targetMatch: "line of" },
+            { id: 37, subject: "公式問題集12", num: "35", word: "interview for", meaning: "〜の面接を受ける", phrase: "interview for a marketing position", phrase_translation: "マーケティング職の面接を受ける", example: "She has been invited to interview for the manager role next week.", example_translation: "彼女は来週、マネージャー職の面接に呼ばれている。", targetMatch: "interview for" },
+            { id: 38, subject: "公式問題集12", num: "35", word: "power", meaning: "電動の、電力、動力を供給する", phrase: "operate power tools", phrase_translation: "電動工具を操作する", example: "Solar panels are used to power the entire office building.", example_translation: "オフィスビル全体の電力を賄うためにソーラーパネルが使われている。", targetMatch: "power" },
+            { id: 39, subject: "公式問題集12", num: "35", word: "sale", meaning: "販売、特売、売上高", phrase: "items available for sale", phrase_translation: "販売可能な商品", example: "The summer sale attracts a large number of customers every year.", example_translation: "その夏季特売には毎年多くの顧客が集まる。", targetMatch: "sale" },
+            { id: 40, subject: "公式問題集12", num: "37/45", word: "referral", meaning: "紹介、照会", phrase: "obtain a medical referral", phrase_translation: "医師からの紹介状を得る", example: "Most of our new clients come to us through word-of-mouth referrals.", example_translation: "当社の新規顧客のほとんどは、口コミの紹介経由で来られます。", targetMatch: "referral|referrals" },
+            { id: 41, subject: "公式問題集12", num: "38", word: "get behind schedule", meaning: "予定より遅れる", phrase: "The construction work got behind schedule.", phrase_translation: "建設工事は予定より遅れた。", example: "If we miss this deadline, the whole project will get behind schedule.", example_translation: "この締め切りを逃すと、プロジェクト全体が予定より遅れてしまう。", targetMatch: "get behind schedule|got behind schedule" },
+            { id: 42, subject: "公式問題集12", num: "39", word: "laundromat", meaning: "コインランドリー", phrase: "wash blankets at a laundromat", phrase_translation: "コインランドリーで毛布を洗う", example: "There is a 24-hour laundromat just around the corner from the station.", example_translation: "駅の角を曲がったところに24時間営業のコインランドリーがある。", targetMatch: "laundromat" },
+            { id: 43, subject: "公式問題集12", num: "41", word: "procedure", meaning: "手順、手続き", phrase: "follow the standard safety procedure", phrase_translation: "標準的な安全手順に従う", example: "The registration procedure for the seminar is very simple.", example_translation: "そのセミナーの登録手続きは非常に簡単だ。", targetMatch: "procedure" },
+            { id: 44, subject: "公式問題集12", num: "41", word: "shareholder meeting", meaning: "株主総会", phrase: "attend the annual shareholder meeting", phrase_translation: "年次株主総会に出席する", example: "The CEO addressed the financial loss during the shareholder meeting.", example_translation: "最高経営責任者は株主総会の中で財務損失について説明した。", targetMatch: "shareholder meeting" },
+            { id: 45, subject: "公式問題集12", num: "42", word: "Would you like me to -?", meaning: "〜しましょうか？", phrase: "Would you like me to make a copy?", phrase_translation: "コピーを取りましょうか？", example: "Would you like me to pick you up from the airport tomorrow?", example_translation: "明日、空港まで車で迎えに行きましょうか？", targetMatch: "Would you like me to" },
+            { id: 46, subject: "公式問題集12", num: "42", word: "go out to", meaning: "〜へ送られる、出かける", phrase: "The invitations went out to all clients.", phrase_translation: "招待状がすべての顧客に向けて送られた。", example: "Let's go out to a nice restaurant to celebrate your promotion.", example_translation: "あなたの昇進を祝うために素敵なレストランへ出かけよう。", targetMatch: "go out to|went out to" },
+            { id: 47, subject: "公式問題集12", num: "42", word: "point of contact", meaning: "連絡窓口", phrase: "serve as the primary point of contact", phrase_translation: "主要な連絡窓口として機能する", example: "Please update the list with the name of the new point of contact.", example_translation: "新しい連絡窓口の名前でリストを更新してください。", targetMatch: "point of contact" },
+            { id: 48, subject: "公式問題集12", num: "42", word: "go through", meaning: "過程などを踏む、経験する、通過する", phrase: "go through the approval process", phrase_translation: "承認プロセスを踏む", example: "You need to go through security before entering the lounge.", example_translation: "ラウンジに入る前に手荷物検査を通過する必要がある。", targetMatch: "go through" },
+            { id: 49, subject: "公式問題集12", num: "46", word: "symptom", meaning: "症状、兆候", phrase: "mild flu symptoms", phrase_translation: "軽いインフルエンザの症状", example: "The decline in sales is a clear symptom of a changing market.", example_translation: "売上の減少は、市場の変化を示す明確な兆候だ。", targetMatch: "symptom|symptoms" },
+            { id: 50, subject: "公式問題集12", num: "46", word: "so far", meaning: "今までのところ", phrase: "Everything is going well so far.", phrase_translation: "今までのところ、すべて順調です。", example: "So far, we have received over fifty applications for the job.", example_translation: "今までのところ、その求人に50件以上の応募が届いている。", targetMatch: "so far|So far" },
+            { id: 51, subject: "公式問題集12", num: "46", word: "anyhow", meaning: "さておき、とにかく", phrase: "It's raining, but I have to go anyhow.", phrase_translation: "雨だけど、とにかく行かなきゃ。", example: "Anyhow, let's get back to the main topic of our meeting.", example_translation: "さておき、会議の本題に戻りましょう。", targetMatch: "anyhow|Anyhow" },
+            { id: 52, subject: "公式問題集12", num: "50", word: "lumber", meaning: "木材", phrase: "a shipment of lumber", phrase_translation: "木材の出荷品", example: "The local furniture factory sources its lumber from sustainable forests.", example_translation: "地元の家具工場は、持続可能な森林から木材を調達している。", targetMatch: "lumber" },
+            { id: 53, subject: "公式問題集12", num: "51", word: "reassure", meaning: "〜を安心させる", phrase: "reassure anxious customers", phrase_translation: "不安そうな顧客を安心させる", example: "The manager tried to reassure the team that the budget was secure.", example_translation: "マネージャーは予算が確保されていることをチームに伝えて安心させようとした。", targetMatch: "reassure" },
+            { id: 54, subject: "公式問題集12", num: "54", word: "brand new", meaning: "真新しい、新品の", phrase: "purchase a brand new car", phrase_translation: "新品の車を購入する", example: "The company moved into a brand new headquarters building downtown.", example_translation: "その会社は中心街にある真新しい本社ビルに移転した。", targetMatch: "brand new" },
+            { id: 55, subject: "公式問題集12", num: "55", word: "dine", meaning: "食事をする", phrase: "dine with business partners", phrase_translation: "ビジネスパートナーと食事をする", example: "Guests can dine on the outdoor terrace while enjoying the view.", example_translation: "宿泊客は景色を楽しみながら屋外テラスで食事をすることができる。", targetMatch: "dine" },
+            { id: 56, subject: "公式問題集12", num: "55", word: "reward program", meaning: "報奨制度、ポイントプログラム", phrase: "join the loyalty reward program", phrase_translation: "常連客向けの報奨プログラムに入会する", example: "Our reward program offers exclusive discounts to frequent flyers.", example_translation: "当社のポイントプログラムは、頻繁に飛行機を利用する乗客に限定割引を提供しています。", targetMatch: "reward program" },
+            { id: 57, subject: "公式問題集12", num: "56", word: "Accounting firm", meaning: "会計事務所", phrase: "work for a major accounting firm", phrase_translation: "大手の会計事務所で働く", example: "We hired an independent accounting firm to audit our finances.", example_translation: "私たちは財務監査を行うために、外部の会計事務所を雇った。", targetMatch: "accounting firm|Accounting firm" },
+            { id: 58, subject: "公式問題集12", num: "56", word: "investigate", meaning: "〜を詳しく調査する", phrase: "investigate the cause of the error", phrase_translation: "エラーの原因を詳しく調査する", example: "A special committee was formed to investigate the data breach.", example_translation: "データ漏洩を調査するために特別委員会が結成された。", targetMatch: "investigate" },
+            { id: 59, subject: "公式問題集12", num: "57", word: "invoice", meaning: "請求書", phrase: "issue an invoice for the services", phrase_translation: "サービスの請求書を発行する", example: "Please review the invoice to ensure the total amount is correct.", example_translation: "合計金額が正しいか確認するために、請求書を見直してください。", targetMatch: "invoice" },
+            { id: 60, subject: "公式問題集12", num: "57", word: "statement", meaning: "明細書、声明", phrase: "monthly bank statement", phrase_translation: "毎月の銀行口座明細書", example: "The company issued an official statement regarding the product recall.", example_translation: "その会社は製品回収に関する公式声明を発表した。", targetMatch: "statement" },
+            { id: 61, subject: "公式問題集12", num: "57", word: "though", meaning: "でも、〜だけれども[副詞]", phrase: "The food was good, expensive though.", phrase_translation: "料理は美味しかった。高かったけどね。", example: "Though he was tired, he finished compiling the financial report.", example_translation: "彼は疲れていたが、財務報告書をまとめる作業を終わらせた。", targetMatch: "though|Though" },
+            { id: 62, subject: "公式問題集12", num: "58", word: "look into", meaning: "〜を調べる、検討する", phrase: "look into alternative solutions", phrase_translation: "代替案を検討する", example: "The IT department is looking into why the server went down.", example_translation: "IT部門はなぜサーバーがダウンしたのかを調べている。", targetMatch: "look into|looking into" },
+            { id: 63, subject: "公式問題集12", num: "63/103", word: "arrange", meaning: "〜を取り決める、手配する", phrase: "arrange a meeting time", phrase_translation: "会議の時間を設定する[取り決める]", example: "She arranged the flowers beautifully on the reception desk.", example_translation: "彼女は受付の机の上に花をきれいに配置した。", targetMatch: "arrange|arranged" },
+            { id: 64, subject: "公式問題集12", num: "63", word: "get in one's way", meaning: "〜の邪魔になる", phrase: "Don't let personal feelings get in your way.", phrase_translation: "私情を仕事の邪魔にさせてはいけない。", example: "Move that box because it is getting in the way of the door.", example_translation: "あの箱はドアの邪魔になっているから移動させてください。", targetMatch: "get in your way|getting in the way" },
+            { id: 65, subject: "公式問題集12", num: "64", word: "retreat", meaning: "社員研修会、避難所", phrase: "attend an annual staff retreat", phrase_translation: "年に一度の社員研修会に出席する", example: "The mountain cabin served as a perfect retreat from the busy city.", example_translation: "その山小屋は、忙しい都会から離れるための完璧な隠れ家だった。", targetMatch: "retreat" },
+            { id: 66, subject: "公式問題集12", num: "64", word: "directory", meaning: "建物案内板、名簿", phrase: "check the building directory", phrase_translation: "建物の案内板を確認する", example: "You can find the employee's email address in the corporate directory.", example_translation: "社内名簿でその従業員のメールアドレスを見つけることができます。", targetMatch: "directory" },
+            { id: 67, subject: "公式問題集12", num: "65", word: "apartment", meaning: "アパートの一室、マンション", phrase: "rent a two-bedroom apartment", phrase_translation: "2LDKのアパートの一室を借りる", example: "The old building was converted into modern luxury apartments.", example_translation: "その古い建物は、近代的な高級マンションへと改装された。", targetMatch: "apartment|apartments" },
+            { id: 68, subject: "公式問題集12", num: "66", word: "would like to have something done", meaning: "〜をしてもらいたい", phrase: "I would like to have this dress cleaned.", phrase_translation: "このドレスをクリーニングしてもらいたい。", example: "We would like to have the office repainted over the weekend.", example_translation: "私たちは週末の間にオフィスを塗り替えてもらいたいと考えています。", targetMatch: "would like to have" },
+            { id: 69, subject: "公式問題集12", num: "67", word: "bill", meaning: "請求書、紙幣、請求する", phrase: "pay the electricity bill", phrase_translation: "電気代の請求書を支払う", example: "The bartender handed him change in ten-dollar bills.", example_translation: "バーテンダーは彼に10ドル紙幣でお釣りを渡した。", targetMatch: "bill|bills" },
+            { id: 70, subject: "公式問題集12", num: "69", word: "do with", meaning: "〜を処理する、扱う", phrase: "What did you do with the files?", phrase_translation: "あのファイルをどう処理しましたか？", example: "I don't know what to do with all these leftover materials.", example_translation: "これらすべての残った資材をどう扱えばいいのかわからない。", targetMatch: "do with" },
+            { id: 71, subject: "公式問題集12", num: "70", word: "special", meaning: "おすすめ料理、特別セール[名詞]", phrase: "order tonight's seafood special", phrase_translation: "今夜のおすすめシーフード料理を注文する", example: "The store is running a weekend special on all electronic items.", example_translation: "その店は週末、すべての電子機器を対象とした特別セールを行っている。", targetMatch: "special" },
+            { id: 72, subject: "公式問題集12", num: "103", word: "once", meaning: "ひとたび〜すれば", phrase: "Once you sign the contract, it is binding.", phrase_translation: "ひとたび契約に署名すれば、それは拘束力を持ちます。", example: "I only met the new CEO once during the conference.", example_translation: "私は会議中に一度だけ新しいCEOに会った。", targetMatch: "Once|once" },
+            { id: 73, subject: "公式問題集12", num: "103", word: "gala", meaning: "祝賀会、お祭り", phrase: "host a charity gala", phrase_translation: "チャリティ祝賀会を主催する", example: "Tickets for the annual winter gala sold out within an hour.", example_translation: "年に一度の冬季祝賀会のチケットは1時間以内に完売した。", targetMatch: "gala" },
+            { id: 74, subject: "公式問題集12", num: "104", word: "through", meaning: "ずっと、〜の間中、〜を通じて", phrase: "stay open through the night", phrase_translation: "夜の間中ずっと営業している", example: "We passed through the security checkpoint without any trouble.", example_translation: "私たちはトラブルなくセキュリティチェックポイントを通過した。", targetMatch: "through" },
+            { id: 75, subject: "公式問題集12", num: "111", word: "incoming", meaning: "新任の、入ってくる", phrase: "welcome the incoming president", phrase_translation: "新任の社長を歓迎する", example: "Please screen all incoming telephone calls this afternoon.", example_translation: "今夜のすべての着信電話をスクリーニング[選別]してください。", targetMatch: "incoming" },
+            { id: 76, subject: "公式問題集12", num: "114", word: "serve", meaning: "役割を果たす、仕える、出す", phrase: "serve as a temporary manager", phrase_translation: "一時的なマネージャーとしての役割を果たす", example: "The restaurant serves authentic Italian cuisine every evening.", example_translation: "そのレストランは毎晩、本物のイタリア料理を提供している。", targetMatch: "serve|serves" },
+            { id: 77, subject: "公式問題集12", num: "114", word: "faithfully", meaning: "誠実に、正確に", phrase: "execute the duties faithfully", phrase_translation: "誠実に職務を遂行する", example: "The old copy machine still reproduces images faithfully.", example_translation: "その古いコピー機は今でも画像を正確に再現する。", targetMatch: "faithfully" },
+            { id: 78, subject: "公式問題集12", num: "116", word: "thread", meaning: "糸、議論などの筋", phrase: "sew with a heavy cotton thread", phrase_translation: "太い綿糸で縫う", example: "I lost the thread of the argument during the long presentation.", example_translation: "長いプレゼンの間に議論の脈絡[筋]を見失ってしまった。", targetMatch: "thread" },
+            { id: 79, subject: "公式問題集12", num: "117", word: "rest assured", meaning: "安心する", phrase: "Please rest assured that we are safe.", phrase_translation: "私たちは安全ですのでどうぞご安心ください。", example: "You can rest assured knowing that the system is fully backed up.", example_translation: "システムは完全にバックアップされているので安心してください。", targetMatch: "rest assured" },
+            { id: 80, subject: "公式問題集12", num: "117", word: "secure", meaning: "安全な、厳重に保管された、確保する", phrase: "keep documents in a secure location", phrase_translation: "書類を安全な場所に保管する", example: "The team managed to secure a major contract with the client.", example_translation: "チームは何とかクライアントとの大口契約を確保した。", targetMatch: "secure" },
+            { id: 81, subject: "公式問題集12", num: "119", word: "duplicate", meaning: "再現する、複製する", phrase: "duplicate the scientific experiment", phrase_translation: "科学実験を再現する", example: "Please make a duplicate of this key for the new intern.", example_translation: "新しいインターンのためにこの鍵の複製を作ってください。", targetMatch: "duplicate" },
+            { id: 82, subject: "公式問題集12", num: "120", word: "within", meaning: "〜の範囲内で、〜以内に", phrase: "complete the work within budget", phrase_translation: "予算の範囲内で作業を完了させる", example: "The package is expected to arrive within three business days.", example_translation: "荷物は3営業日以内に到着する予定です。", targetMatch: "within" },
+            { id: 83, subject: "公式問題集12", num: "124", word: "condense", meaning: "簡約化する、要約する、濃縮する", phrase: "condense a report into one page", phrase_translation: "報告書を1ページに要約する", example: "Milk is heated slowly to condense it for making sweets.", example_translation: "お菓子作りのためにミルクをゆっくり加熱して濃縮させる。", targetMatch: "condense" },
+            { id: 84, subject: "公式問題集12", num: "127", word: "resolution", meaning: "解像度、決議、解決", phrase: "high screen resolution", phrase_translation: "高い画面解像度", example: "The board passed a resolution to expand the business overseas.", example_translation: "取締役会は海外事業を拡大する決議を採択した。", targetMatch: "resolution" },
+            { id: 85, subject: "公式問題集12", num: "128", word: "Please disregard -", meaning: "〜をご放念ください", phrase: "Please disregard our previous email.", phrase_translation: "前回のメールの件はご放念ください[無視してください]。", example: "You can disregard that warning light; it is just a system test.", example_translation: "あの警告灯は無視して構いません。ただのシステムテストです。", targetMatch: "Please disregard|disregard" },
+            { id: 86, subject: "公式問題集12", num: "128", word: "neglect", meaning: "〜を怠る、無視する", phrase: "neglect one's daily duties", phrase_translation: "日々の職務を怠る", example: "The landlord was fined for neglecting basic property maintenance.", example_translation: "家主は基本的な物件管理を怠ったとして罰金を科された。", targetMatch: "neglect|neglecting" },
+            { id: 87, subject: "公式問題集12", num: "129", word: "surcharge", meaning: "追加料金", phrase: "pay a fuel surcharge", phrase_translation: "燃料追加料金を支払う", example: "A standard surcharge is applied to all deliveries on Sundays.", example_translation: "日曜日のすべての配達には標準の追加料金が適用されます。", targetMatch: "surcharge" },
+            { id: 88, subject: "公式問題集12", num: "130", word: "spokesperson", meaning: "広報担当者", phrase: "act as a company spokesperson", phrase_translation: "会社の広報担当者を務める", example: "The spokesperson denied the rumors during the press conference.", example_translation: "広報担当者は記者会見でその噂を否定した。", targetMatch: "spokesperson" },
+            { id: 89, subject: "公式問題集12", num: "130", word: "freight", meaning: "貨物、運送費", phrase: "transport freight by rail", phrase_translation: "鉄道で貨物を輸送する", example: "The total cost includes both the price of goods and the freight.", example_translation: "総コストには商品の価格と運送費の両方が含まれています。", targetMatch: "freight" },
+            { id: 90, subject: "公式問題集12", num: "132", word: "avenue", meaning: "大通り、手段・街", phrase: "walk down Fifth Avenue", phrase_translation: "5番街の大通りを歩く", example: "We must explore every avenue to reduce corporate expenses.", example_translation: "私たちは会社の経費を削減するためにあらゆる手段を模索しなければならない。", targetMatch: "Avenue|avenue" },
+            { id: 91, subject: "公式問題集12", num: "133", word: "souvenir", meaning: "土産、記念品", phrase: "buy souvenirs at the gift shop", phrase_translation: "ギフトショップでお土産を買う", example: "This key chain serves as a small souvenir of my trip to Paris.", example_translation: "このキーホルダーは私のパリ旅行の小さな記念品です。", targetMatch: "souvenir|souvenirs" },
+            { id: 92, subject: "公式問題集12", num: "133", word: "apparel", meaning: "衣料品、衣服", phrase: "children's apparel industry", phrase_translation: "子供用衣料品業界", example: "The store specializes in high-quality outdoor apparel and gear.", example_translation: "その店は高品質なアウトドア用衣料品と道具を専門に扱っている。", targetMatch: "apparel" },
+            { id: 93, subject: "公式問題集12", num: "137", word: "preservation", meaning: "保存、保護", phrase: "historic building preservation", phrase_translation: "歴史的建造物の保存", example: "The dynamic group focuses on the preservation of natural wildlife.", example_translation: "その活動的なグループは自然の野生生物の保護に注力している。", targetMatch: "preservation" },
+            { id: 94, subject: "公式問題集12", num: "139", word: "complete", meaning: "詳細な、完全な、〜を完了する", phrase: "a complete list of items", phrase_translation: "詳細な[完全な]品目リスト", example: "You must complete the registration form before accessing the app.", example_translation: "アプリにアクセスする前に登録フォームへの入力を完了する必要があります。", targetMatch: "complete" },
+            { id: 95, subject: "公式問題集12", num: "141", word: "look up", meaning: "調査する、見上げる", phrase: "look up information online", phrase_translation: "ネットで情報を調べる", example: "Things are starting to look up for the retail business this quarter.", example_translation: "今 quarter、小売業界の状況は好転し[上向きに]始めている。", targetMatch: "look up" },
+            { id: 96, subject: "公式問題集12", num: "141", word: "carry", meaning: "取り扱う、運ぶ", phrase: "carry a wide selection of goods", phrase_translation: "幅広い商品を取り扱う", example: "Please carry this box carefully as it contains fragile items.", example_translation: "壊れやすい物が入っているので、この箱は慎重に運んでください。", targetMatch: "carry" },
+            { id: 97, subject: "公式問題集12", num: "146", word: "In sum", meaning: "要するに、つまり", phrase: "In sum, the project was a success.", phrase_translation: "要するに、そのプロジェクトは成功だった。", example: "In sum, we need to reduce costs and increase productivity.", example_translation: "要約すると、私たちはコストを削減し生産性を上げる必要がある。", targetMatch: "In sum" },
+            { id: 98, subject: "公式問題集12", num: "147", word: "obtain", meaning: "入手できる、獲得する", phrase: "obtain a permit from the city", phrase_translation: "市から許可証を入手する", example: "It is difficult to obtain reliable data on this new technology.", example_translation: "この新技術に関する信頼できるデータを得ることは難しい。", targetMatch: "obtain" },
+            { id: 99, subject: "公式問題集12", num: "147", word: "direction", meaning: "道順、指示、方向", phrase: "ask for directions to the station", phrase_translation: "駅への道順を尋ねる", example: "Under the direction of the new manager, the project advanced quickly.", example_translation: "新しいマネージャーの指示[指揮]のもと、プロジェクトは急速に進んだ。", targetMatch: "directions|direction" },
+            { id: 100, subject: "公式問題集12", num: "148", word: "tow away", meaning: "〜をレッカーで移動する", phrase: "Your car will be towed away.", phrase_translation: "あなたの車はレッカー移動されますよ。", example: "Illegal parking on this narrow street means your vehicle gets towed away.", example_translation: "この狭い通りでの違法駐車は、車両がレッカー移動されることを意味する。", targetMatch: "towed away" },
+            { id: 101, subject: "公式問題集12", num: "148", word: "fine", meaning: "罰金、素晴らしい", phrase: "pay a heavy fine for speeding", phrase_translation: "スピード違反で重い罰金を支払う", example: "The weather forecast says it will be fine tomorrow afternoon.", example_translation: "天気予報によると、明日の午後からは晴れ[素晴らしい天気]になるそうです。", targetMatch: "fine" },
+            { id: 102, subject: "公式問題集12", num: "149", word: "vendor", meaning: "物売り、露店、業者", phrase: "a street food vendor", phrase_translation: "通りの食品露店商", example: "We need to select a reliable vendor to supply raw materials.", example_translation: "私たちは原材料を供給してくれる信頼できる業者を選ぶ必要がある。", targetMatch: "vendor" },
+            { id: 103, subject: "公式問題集12", num: "149", word: "voucher", meaning: "食事引換券、クーポン", phrase: "redeem a complimentary meal voucher", phrase_translation: "無料食事引換券を利用する", example: "The hotel provided a complimentary voucher for the spa treatment.", example_translation: "ホテルはスパ治療の無料クーポンを提供してくれた。", targetMatch: "voucher" },
+            { id: 104, subject: "公式問題集12", num: "150", word: "take down", meaning: "解体する、書き留める", phrase: "take down the temporary stage", phrase_translation: "一時的なステージを解体する", example: "Please take down notes during the orientation session.", example_translation: "オリエンテーションのセッション中にメモを書き留めてください。", targetMatch: "take down" },
+            { id: 105, subject: "公式問題集12", num: "150", word: "direct", meaning: "管理する、誘導する、直接の", phrase: "direct traffic during the event", phrase_translation: "イベント中に交通を誘導する", example: "He was hired to direct the new marketing campaign in Europe.", example_translation: "彼は欧州での新しいマーケティングキャンペーンを管理するために雇われた。", targetMatch: "direct" },
+            { id: 106, subject: "公式問題集12", num: "153", word: "reimburse", meaning: "〜に払い戻す、費用を補填する", phrase: "reimburse travel expenses", phrase_translation: "旅費を払い戻す", example: "The company will reimburse you for any business-related meals.", example_translation: "会社はビジネスに関連するあらゆる食事代をあなたに払い戻します。", targetMatch: "reimburse" },
+            { id: 107, subject: "公式問題集12", num: "154", word: "server", meaning: "給仕人、ホールスタッフ、サーバー", phrase: "ask the server for the check", phrase_translation: "給仕スタッフにお会計をお願いする", example: "The IT team is working hard to fix the main network server.", example_translation: "ITチームは主要なネットワークサーバーを修理するために懸命に働いている。", targetMatch: "server" },
+            { id: 108, subject: "公式問題集12", num: "155", word: "shadow", meaning: "（経験者）に付いて仕事を学ぶ", phrase: "shadow an experienced engineer", phrase_translation: "経験豊富なエンジニアに付いて仕事を学ぶ", example: "Small doubts began to cast a long shadow over their partnership.", example_translation: "小さな疑念が、彼らの提携関係に暗い影を落とし始めた。", targetMatch: "shadow" },
+            { id: 109, subject: "公式問題集12", num: "155", word: "accommodate", meaning: "〜に合わせる、要望に応じる、収容する", phrase: "accommodate special dietary requests", phrase_translation: "特別な食事の要望に合わせる", example: "The main auditorium can easily accommodate up to five hundred guests.", example_translation: "主要な講堂は、最大500人のゲストを容易に収容できる。", targetMatch: "accommodate" },
+            { id: 110, subject: "公式問題集12", num: "157", word: "current", meaning: "現在の、流れ", phrase: "under the current economic situation", phrase_translation: "現在の経済状況のもとで", example: "Strong ocean currents made it dangerous to swim near the beach.", example_translation: "強い海流のせいで、ビーチの近くで泳ぐのは危険だった。", targetMatch: "current|currents" },
+            { id: 111, subject: "公式問題集12", num: "159", word: "ordinance", meaning: "条例、法令", phrase: "pass a new noise ordinance", phrase_translation: "新しい騒音規制条例を可決する", example: "The city council introduced an ordinance to restrict local parking.", example_translation: "市議会は地域の駐車を制限する条例を導入した。", targetMatch: "ordinance" },
+            { id: 112, subject: "公式問題集12", num: "159", word: "indefinitely", meaning: "無期限に", phrase: "postpone the exhibition indefinitely", phrase_translation: "展示会を無期限に延期する", example: "The local factory has been closed indefinitely due to structural defects.", example_translation: "その地元の工場は構造的欠陥のため無期限に閉鎖されている。", targetMatch: "indefinitely" },
+            { id: 113, subject: "公式問題集12", num: "159", word: "go into effect", meaning: "発効する、施行される", phrase: "The law will go into effect next month.", phrase_translation: "その法律は来月発効する。", example: "New safety regulations on construction sites went into effect today.", example_translation: "建設現場における新しい安全規制が本日施行された。", targetMatch: "go into effect|went into effect" },
+            { id: 114, subject: "公式問題集12", num: "159", word: "wellness", meaning: "心身の健康、ウェルネス", phrase: "promote employee wellness programs", phrase_translation: "従業員の健康増進プログラムを推進する", example: "The retreat center focuses entirely on physical and mental wellness.", example_translation: "その研修センターは、身体的および精神的な健康に完全に焦点を当てている。", targetMatch: "wellness" },
+            { id: 115, subject: "公式問題集12", num: "160", word: "beyond", meaning: "〜を越えて、〜の向こうに", phrase: "beyond our expectations", phrase_translation: "私たちの期待を越えて", example: "The scenic bicycle trail extends far beyond the mountain ridge.", example_translation: "その景色の良い自転車道は、山の尾根を遥かに越えて延びている。", targetMatch: "beyond" },
+            { id: 116, subject: "公式問題集12", num: "161", word: "farm-to-table", meaning: "農地直送の、地産地消の", phrase: "a popular farm-to-table restaurant", phrase_translation: "人気の農地直送レストラン", example: "The hotel bistro promotes a healthy farm-to-table culinary concept.", example_translation: "ホテルのビストロは、健康的な農地直送の料理コンセプトを推進している。", targetMatch: "farm-to-table" },
+            { id: 117, subject: "公式問題集12", num: "162", word: "grilling", meaning: "焼くこと、きびしい質問", phrase: "master the art of outdoor grilling", phrase_translation: "屋外でのグリルの技術をマスターする", example: "The suspect faced an intense grilling by the detectives for hours.", example_translation: "容疑者は刑事たちによる数時間の激しい尋問[詰問]に直面した。", targetMatch: "grilling" },
+            { id: 118, subject: "公式問題集12", num: "162", word: "signature", meaning: "看板の、署名", phrase: "try the chef's signature dish", phrase_translation: "シェフの看板料理を試す", example: "We need an authorized signature to finalize this business deal.", example_translation: "このビジネス取引を完了するには、権限のある署名が必要です。", targetMatch: "signature" },
+            { id: 119, subject: "公式問題集12", num: "162", word: "acquisition", meaning: "買収、獲得", phrase: "announce the acquisition of a rival firm", phrase_translation: "ライバル企業の買収を発表する", example: "The museum's latest acquisition is a rare 19th-century oil painting.", example_translation: "美術館の最新の獲得品[収蔵品]は、珍しい19世紀の油絵だ。", targetMatch: "acquisition" },
+            { id: 120, subject: "公式問題集12", num: "163", word: "address", meaning: "対処する、住所、演説する", phrase: "address the customer complaints", phrase_translation: "顧客の苦情に対処する", example: "The president will address the nation on television tonight.", example_translation: "大統領は今夜、テレビで国民に向けて演説する予定だ。", targetMatch: "address" },
+            { id: 121, subject: "公式問題集12", num: "163", word: "attend to", meaning: "対応する、対処する、看護する", phrase: "attend to urgent business issues", phrase_translation: "急を要するビジネス上の問題に対応する", example: "The medical team quickly attended to the injured passengers.", example_translation: "医療チームは負傷した乗客たちの手当てに迅速に対応した。", targetMatch: "attend to|attended to" },
+            { id: 122, subject: "公式問題集12", num: "163", word: "personable", meaning: "好感の持てる、魅力的な", phrase: "hire a personable sales representative", phrase_translation: "好感の持てる販売代理人を雇う", example: "Her personable nature makes her an excellent fit for public relations.", example_translation: "彼女の好感の持てる性格は、広報の仕事にまさにうってつけだ。", targetMatch: "personable" },
+            { id: 123, subject: "公式問題集12", num: "164", word: "incorporate into", meaning: "〜に取り入れる、組み込む", phrase: "incorporate new ideas into the design", phrase_translation: "デザインに新しいアイデアを取り入れる", example: "We plan to incorporate active user feedback into our next software update.", example_translation: "私たちは次のソフト更新に活発なユーザーフィードバックを組み込む予定だ。", targetMatch: "incorporate" },
+            { id: 124, subject: "公式問題集12", num: "165", word: "pass down", meaning: "〜を伝える、継承する", phrase: "pass down traditional recipes", phrase_translation: "伝統的なレシピを後世に伝える", example: "These valuable skills were passed down from generation to generation.", example_translation: "これらの価値ある技術は、世代から世代へと受け継がれた。", targetMatch: "pass down|passed down" },
+            { id: 125, subject: "公式問題集12", num: "165", word: "turn into", meaning: "〜に変える、〜になる", phrase: "turn an old factory into a loft", phrase_translation: "古い工場をロフト付きアパートに変える", example: "If the rain freezes, it will turn into dangerous black ice.", example_translation: "もし雨が凍れば、それは危険なブラックアイスバーンに変わるだろう。", targetMatch: "turn an old factory into|turn into" },
+            { id: 126, subject: "公式問題集12", num: "166", word: "memorable", meaning: "記憶に残る、忘れられない", phrase: "create a memorable dining experience", phrase_translation: "記憶に残る食事の体験を作り出す", example: "The concert closing performance was truly memorable for all fans.", example_translation: "そのコンサートの締めくくりのパフォーマンスは全ファンにとって本当に忘れられないものとなった。", targetMatch: "memorable" },
+            { id: 127, subject: "公式問題集12", num: "166", word: "aloud", meaning: "声を出して", phrase: "read the contract clause aloud", phrase_translation: "契約書の条項を声に出して読み上げる", example: "Students are encouraged to practice speaking English aloud daily.", example_translation: "学生たちは毎日、声に出して英語を話す練習をすることが推奨されている。", targetMatch: "aloud" },
+            { id: 128, subject: "公式問題集12", num: "167", word: "oral", meaning: "口頭での", phrase: "give an oral presentation", phrase_translation: "口頭でのプレゼンテーションを行う", example: "The dentist specializes in comprehensive oral hygiene and care.", example_translation: "その歯科医は、包括的な口腔衛生とケアを専門としている。", targetMatch: "oral" },
+            { id: 129, subject: "公式問題集12", num: "167", word: "captivating", meaning: "魅惑的な、心を奪う", phrase: "deliver a captivating speech", phrase_translation: "魅惑的なスピーチを行う", example: "The novel features a captivating plot that keeps readers engaged.", example_translation: "その小説は、読者を引きつけて離さない魅惑的な筋書きが特徴だ。", targetMatch: "captivating" },
+            { id: 130, subject: "公式問題集12", num: "168", word: "in person", meaning: "本人が直に、対面で", phrase: "meet the project manager in person", phrase_translation: "プロジェクトマネージャーに直接会う", example: "You must register for the training course in person at the front desk.", example_translation: "研修コースへの登録は、受付の窓口で本人が直接行う必要があります。", targetMatch: "in person" },
+            { id: 131, subject: "公式問題集12", num: "170", word: "contractor", meaning: "請負業者、建設業者", phrase: "hire a reliable general contractor", phrase_translation: "信頼できる総合請負業者を雇う", example: "The independent contractor was brought in to upgrade the IT network.", example_translation: "ITネットワークをアップグレードするために、外部の請負業者が入った。", targetMatch: "contractor" },
+            { id: 132, subject: "公式問題集12", num: "170", word: "tenant", meaning: "賃借人、入居者", phrase: "attract new tenants to the building", phrase_translation: "ビルに新しい入居者を引きつける", example: "The commercial tenant requested a reduction in the monthly rent.", example_translation: "その商業テナント[店舗借主]は毎月の家賃の減額を要求した。", targetMatch: "tenant|tenants" },
+            { id: 133, subject: "公式問題集12", num: "171", word: "finalize", meaning: "〜を最終決定する、まとめる", phrase: "finalize the schedule for the event", phrase_translation: "イベントのスケジュールを最終決定する", example: "The legal team is meeting today to finalize the merger agreement.", example_translation: "法律チームは合併契約をまとめ上げるために本日会合を開いている。", targetMatch: "finalize" },
+            { id: 134, subject: "公式問題集12", num: "172", word: "assessment", meaning: "査定、評価", phrase: "conduct a thorough risk assessment", phrase_translation: "徹底的なリスク評価を行う", example: "The teacher completed the student performance assessment last week.", example_translation: "教師は先週、生徒の成績評価を完了した。", targetMatch: "assessment" },
+            { id: 135, subject: "公式問題集12", num: "173", word: "operation", meaning: "事業、業務、操作", phrase: "expand global business operations", phrase_translation: "世界的なビジネス事業を拡大する", example: "The safe operation of heavy machinery requires specialized training.", example_translation: "重機の安全な操作には、専門的な訓練が必要とされます。", targetMatch: "operations|operation" },
+            { id: 136, subject: "公式問題集12", num: "173", word: "pose a risk to", meaning: "〜に危険をもたらす", phrase: "pose a serious risk to public health", phrase_translation: "公衆衛生に深刻な危険をもたらす", example: "Leaving data unencrypted poses a significant risk to cybersecurity.", example_translation: "データを暗号化しないままにしておくことは、サイバーセキュリティに大きな危険をもたらす。", targetMatch: "pose a significant risk to|poses a serious risk to" },
+            { id: 137, subject: "公式問題集12", num: "173", word: "further", meaning: "さらに、それ以上の、促進する", phrase: "provide further instructions later", phrase_translation: "後ほどさらに詳細な指示を出す", example: "The grant money will be used to further scientific research.", example_translation: "その助成金は、科学研究をさらに促進するために使用される。", targetMatch: "further" },
+            { id: 138, subject: "公式問題集12", num: "174", word: "retrieve", meaning: "取り出す、回収する", phrase: "retrieve deleted files from the server", phrase_translation: "サーバーから削除されたファイルを取り出す", example: "The dog was trained to retrieve identical items from the field.", example_translation: "その犬は、フィールドから同じアイテムを回収するように訓練されていた。", targetMatch: "retrieve" },
+            { id: 139, subject: "公式問題集12", num: "174", word: "rate", meaning: "ペース、速度、料金", phrase: "grow at an alarming rate", phrase_translation: "驚くべきペース[速度]で成長する", example: "The hotel offers a discounted room rate for corporate clients.", example_translation: "そのホテルは、法人顧客向けに割引された部屋料金を提供している。", targetMatch: "rate" },
+            { id: 140, subject: "公式問題集12", num: "175", word: "profitable", meaning: "利益の出る、儲かる", phrase: "a highly profitable business model", phrase_translation: "非常に利益の出るビジネスモデル", example: "The investment advisor suggested several profitable stock options.", example_translation: "投資アドバイザーは、いくつかの儲かる株式オプションを提案した。", targetMatch: "profitable" },
+            { id: 141, subject: "公式問題集12", num: "176", word: "reception", meaning: "祝賀会、歓迎会、受付", phrase: "hold a formal welcome reception", phrase_translation: "公式な歓迎祝賀会を開く", example: "The hotel reception area was crowded with international guests.", example_translation: "ホテルの受付エリアは、海外からの宿泊客で混雑していた。", targetMatch: "reception" },
+            { id: 142, subject: "公式問題集12", num: "176", word: "municipal", meaning: "市の、地方自治体の", phrase: "contact the municipal government office", phrase_translation: "市役所[地方自治体]に連絡する", example: "The municipal library offers free internet access to all residents.", example_translation: "市立図書館は、すべての住民に無料のインターネットアクセスを提供している。", targetMatch: "municipal" },
+            { id: 143, subject: "公式問題集12", num: "176", word: "firm", meaning: "事務所、会社、堅い", phrase: "join a prestigious law firm", phrase_translation: "名門の法律事務所に加わる", example: "You need to maintain a firm grip on the market trends.", example_translation: "市場のトレンドをしっかりと[堅く]把握し続ける必要があります。", targetMatch: "firm" },
+            { id: 144, subject: "公式問題集12", num: "176", word: "appetizer", meaning: "前菜", phrase: "serve delicious hot appetizers", phrase_translation: "美味しい温かい前菜を出す", example: "We ordered a selection of fresh appetizers before the main course.", example_translation: "私たちはメインコースの前に、新鮮な前菜の盛り合わせを注文した。", targetMatch: "appetizers|appetizer" },
+            { id: 145, subject: "公式問題集12", num: "177", word: "accommodate", meaning: "受け入れる、宿泊させる", phrase: "accommodate large groups of guests", phrase_translation: "大人数のゲストグループを受け入れる", example: "The luxury hotel can accommodate over three thousand tourists.", example_translation: "その高級ホテルは、3,000人以上の観光客を宿泊させることができる。", targetMatch: "accommodate" },
+            { id: 146, subject: "公式問題集12", num: "177", word: "given", meaning: "〜を考慮すると、特定の", phrase: "Given the tight schedule, we must hurry.", phrase_translation: "厳しいスケジュールを考慮すると、私たちは急がねばならない。", example: "The task must be completed within a given period of time.", example_translation: "そのタスクは、定められた[特定の]期間内に完了しなければならない。", targetMatch: "Given|given" },
+            { id: 147, subject: "公式問題集12", num: "182", word: "spacious", meaning: "広々とした", phrase: "a spacious conference room", phrase_translation: "広々とした会議室", example: "The new residential apartment features a spacious living area.", example_translation: "その新しい居住用アパートは、広々としたリビングエリアが特徴だ。", targetMatch: "spacious" },
+            { id: 148, subject: "公式問題集12", num: "182", word: "intimate", meaning: "より親密な、居心地の良い", phrase: "create an intimate atmosphere", phrase_translation: "親密な雰囲気を作り出す", example: "The small cafe provides an intimate setting for private conversations.", example_translation: "その小さなカフェは、プライベートな会話のための居心地の良い環境を提供している。", targetMatch: "intimate" },
+            { id: 149, subject: "公式問題集12", num: "183", word: "set - apart", meaning: "〜と一線を画す、区別する", phrase: "set the product apart from competitors", phrase_translation: "製品を競合他社と一線を画させる", example: "Her exceptional coding skills set her apart from other candidates.", example_translation: "彼女の並外れたプログラミングスキルが、他の候補者と彼女を区別している[一線を画させている]。", targetMatch: "set her apart|set the product apart" },
+            { id: 150, subject: "公式問題集12", num: "184", word: "foggy", meaning: "霧の深い、ぼやけた", phrase: "drive carefully on a foggy morning", phrase_translation: "霧の深い朝に慎重に運転する", example: "I have a very foggy recollection of what happened last night.", example_translation: "私は昨夜何が起きたのか、非常にぼやけた記憶しかない。", targetMatch: "foggy" },
+            { id: 151, subject: "公式問題集12", num: "184", word: "roomy", meaning: "広々とした、ゆったりした", phrase: "a roomy vehicle for family trips", phrase_translation: "家族旅行のための広々とした車両", example: "The office desk has roomy drawers to store all your files.", example_translation: "そのオフィスの机には、すべてのファイルを収納できるゆったりとした引き出しがある。", targetMatch: "roomy" },
+            { id: 152, subject: "公式問題集12", num: "184", word: "seamlessly", meaning: "途切れることなく、シームレスに", phrase: "integrate seamlessly with the system", phrase_translation: "システムと途切れることなく統合する", example: "The transition to the new cloud platform was handled seamlessly.", example_translation: "新しいクラウドプラットフォームへの移行は、途切れることなくスムーズに行われた。", targetMatch: "seamlessly" },
+            { id: 153, subject: "公式問題集12", num: "186", word: "respectively", meaning: "それぞれ", phrase: "John and Mary scored 80 and 90, respectively.", phrase_translation: "ジョンとメアリーはそれぞれ80点と90点を取った。", example: "The two departments are located on the third and fourth floors, respectively.", example_translation: "その2つの部署は、それぞれ3階と4階に位置しています。", targetMatch: "respectively" },
+            { id: 154, subject: "公式問題集12", num: "187", word: "meteorologist", meaning: "気象予報士", phrase: "consult a certified meteorologist", phrase_translation: "公認の気象予報士に意見を求める", example: "The chief meteorologist warned about the approaching severe storm.", example_translation: "主任気象予報士は、近づいてくる激しい嵐について警告した。", targetMatch: "meteorologist" },
+            { id: 155, subject: "公式問題集12", num: "187", word: "anchor", meaning: "ニュースキャスター、固定する", phrase: "work as a prime-time news anchor", phrase_translation: "ニュースキャスターとして働く", example: "Heavy iron anchors were lowered to keep the cruise ship in place.", example_translation: "クルーズ船をその場所にとどめるために、重い鉄の錨[アンカー]が下ろされた。", targetMatch: "anchor|anchors" },
+            { id: 156, subject: "公式問題集12", num: "187", word: "wind down", meaning: "くつろぐ、終わりに向かう", phrase: "wind down after a stressful work week", phrase_translation: "ストレスの多い仕事の1週間の後にリラックスする[くつろぐ]", example: "The manufacturing project is beginning to wind down after three years.", example_translation: "その製造プロジェクトは、3年を経て終わりに向かい始めている。", targetMatch: "wind down" },
+            { id: 157, subject: "公式問題集12", num: "189", word: "likelihood", meaning: "可能性、見込み", phrase: "in all likelihood", phrase_translation: "おそらく、十中八九", example: "There is a high likelihood of rain during the outdoor festival.", example_translation: "野外フェスティバルの間、雨が降る可能性が高い。", targetMatch: "likelihood" },
+            { id: 158, subject: "公式問題集12", num: "190", word: "forecast", meaning: "予測する、予測[名詞]", phrase: "forecast economic growth patterns", phrase_translation: "経済成長のパターンを予測する", example: "The weather forecast remains uncertain for the upcoming weekend.", example_translation: "今週末の天気予報は、依然として不確実なままである。", targetMatch: "forecast" },
+            { id: 159, subject: "公式問題集12", num: "191", word: "thorough", meaning: "徹底的な、綿密な", phrase: "conduct a thorough background check", phrase_translation: "徹底的な背景[経歴]調査を行う", example: "The auditor did a thorough review of the financial transactions.", example_translation: "監査人は財務取引の綿密な見直しを行った。", targetMatch: "thorough" },
+            { id: 160, subject: "公式問題集12", num: "191", word: "honor - with", meaning: "〜に…の栄誉を与える、称える", phrase: "honor the retiring employee with an award", phrase_translation: "退職する従業員に賞の栄誉を与える", example: "The university decided to honor the scientist with a special degree.", example_translation: "大学はその科学者を特別学位で称えることを決定した。", targetMatch: "honor the retiring employee with|honor the scientist with" },
+            { id: 161, subject: "公式問題集12", num: "192", word: "protagonist", meaning: "主人公、主役", phrase: "the protagonist of the new novel", phrase_translation: "新しい小説の主人公", example: "She played the main protagonist in the award-winning drama film.", example_translation: "彼女はその受賞歴のあるドラマ映画で主要な主役を演じた。", targetMatch: "protagonist" },
+            { id: 162, subject: "公式問題集12", num: "193", word: "former", meaning: "元の、前者の", phrase: "meet with a former business partner", phrase_translation: "元のビジネスパートナーと会う", example: "Of the two options, I strongly prefer the former alternative.", example_translation: "2つの選択肢のうち、私は前者の代替案を強く好みます。", targetMatch: "former" },
+            { id: 163, subject: "公式問題集12", num: "194", word: "excerpt", meaning: "引用、抜粋", phrase: "read a brief excerpt from the speech", phrase_translation: "スピーチからの短い抜粋を呼ぶ", example: "The publishing house printed an excerpt of the book in the magazine.", example_translation: "出版社はその本の抜粋を雑誌に掲載した。", targetMatch: "excerpt" },
+            { id: 164, subject: "公式問題集12", num: "195", word: "coordinator", meaning: "調整役、コーディネーター", phrase: "work as an event coordinator", phrase_translation: "イベントの調整役として働く", example: "Please contact the safety coordinator if you notice any hazards.", example_translation: "もし危険に気づいたら、安全コーディネーターに連絡してください。", targetMatch: "coordinator" },
+
+            // --- 壁超えトレーニング (165〜186) ---
+            { id: 165, subject: "壁超えトレーニング", num: "152", word: "take care of", meaning: "〜を担当する、処理する", phrase: "take care of the travel arrangements", phrase_translation: "旅行の手配を担当する", example: "Don't worry about the cooking; I will take care of it tonight.", example_translation: "料理のことは心配しないで。今夜は私が引き受けるから。", targetMatch: "take care of" },
+            { id: 166, subject: "壁超えトレーニング", num: "152", word: "by the way", meaning: "ところで", phrase: "By the way, did you call him?", phrase_translation: "ところで、彼に電話しましたか？", example: "By the way, the location of tomorrow's seminar has been changed.", example_translation: "ところで、明日のセミナーの場所が変更になりました。", targetMatch: "By the way" },
+            { id: 167, subject: "壁超えトレーニング", num: "154", word: "landscaping", meaning: "造園、景観を整えること", phrase: "a residential landscaping company", phrase_translation: "住宅向けの造園会社", example: "The office courtyard requires some professional landscaping work.", example_translation: "オフィスの庭は、専門的な造園作業をいくらか必要としている。", targetMatch: "landscaping" },
+            { id: 168, subject: "壁超えトレーニング", num: "154", word: "give someone a price", meaning: "見積もりを出す", phrase: "Can you give us a price for this work?", phrase_translation: "この作業の見積もりを出していただけますか？", example: "The contractor gave me a price that was much lower than expected.", example_translation: "請負業者は予想よりもはるかに低い価格を提示してくれた。", targetMatch: "give us a price|gave me a price" },
+            { id: 169, subject: "壁超えトレーニング", num: "155", word: "flour", meaning: "小麦粉", phrase: "a bag of wheat flour", phrase_translation: "小麦粉一袋", example: "Sift the flour before mixing it with the other ingredients.", example_translation: "他の材料と混ぜる前に、小麦粉をふるいにかけてください。", targetMatch: "flour" },
+            { id: 170, subject: "壁超えトレーニング", num: "155", word: "compensate", meaning: "補填する、補償する", phrase: "compensate for the financial loss", phrase_translation: "金銭的損失を補填する", example: "The airline compensated the passengers for the delayed flight.", example_translation: "航空会社はフライトの遅延に対して乗客に補償を行った。", targetMatch: "compensate|compensated" },
+            { id: 171, subject: "壁超えトレーニング", num: "155", word: "distributor", meaning: "流通業者、販売代理店", phrase: "an authorized regional distributor", phrase_translation: "公認の地域販売代理店", example: "We are looking for a new distributor to expand our product reach.", example_translation: "私たちは製品の販路を拡大するために、新しい流通業者を探しています。", targetMatch: "distributor" },
+            { id: 172, subject: "壁超えトレーニング", num: "156", word: "interview", meaning: "面接、面接を行う", phrase: "interview potential candidates", phrase_translation: "潜在的な候補者の面接を行う", example: "The journalist managed to secure an exclusive interview with the CEO.", example_translation: "そのジャーナリストは、CEOとの独占インタビューを何とか取り付けることができた。", targetMatch: "interview" },
+            { id: 173, subject: "壁超えトレーニング", num: "156", word: "tutorial", meaning: "指導、チュートリアル", phrase: "follow an online video tutorial", phrase_translation: "オンラインの動画チュートリアルに従う", example: "The professor offers a weekly tutorial for students needing extra help.", example_translation: "その教授は、追加の援助が必要な学生のために毎週個別指導を行っている。", targetMatch: "tutorial" },
+            { id: 174, subject: "壁超えトレーニング", num: "157", word: "certificate", meaning: "診断書、証明書", phrase: "obtain a medical certificate", phrase_translation: "医師の診断書を取得する", example: "She received a professional training certificate after the course.", example_translation: "彼女はコース終了後、専門訓練の証明書を受け取った。", targetMatch: "certificate" },
+            { id: 175, subject: "壁超えトレーニング", num: "157", word: "physical exam", meaning: "健康診断", phrase: "undergo an annual physical exam", phrase_translation: "年に一度の健康診断を受ける", example: "The new employees are required to complete a physical exam this week.", example_translation: "新入社員は今週、健康診断を完了することが義務付けられている。", targetMatch: "physical exam" },
+            { id: 176, subject: "壁超えトレーニング", num: "158", word: "asset", meaning: "有用な人材、資産", phrase: "be a valuable asset to the team", phrase_translation: "チームにとって価値ある人材となる", example: "The company's total assets include property and heavy equipment.", example_translation: "会社の総資産には、不動産や重機が含まれています。", targetMatch: "asset|assets" },
+            { id: 177, subject: "壁超えトレーニング", num: "159", word: "hang on", meaning: "ちょっと待つ、しがみつく", phrase: "Hang on a minute, let me check.", phrase_translation: "ちょっと1分待って、確認させて。", example: "The small firm managed to hang on despite the economic downturn.", example_translation: "その小さな事務所は、経済の低迷にもかかわらず何とか持ちこたえた[しがみついた]。", targetMatch: "Hang on|hang on" },
+            { id: 178, subject: "壁超えトレーニング", num: "160", word: "dental", meaning: "歯科の", phrase: "comprehensive dental insurance coverage", phrase_translation: "包括的な歯科保険の適用範囲", example: "Regular dental checkups are crucial to maintain overall health.", example_translation: "定期的な歯科検診は、全体の健康を維持するために極めて重要です。", targetMatch: "dental" },
+            { id: 179, subject: "壁超えトレーニング", num: "160", word: "charge - for", meaning: "〜に…を課す、請求する", phrase: "charge a late fee for returns", phrase_translation: "返品に対して延滞料金を課す", example: "The hotel did not charge us for the extra bottled water.", example_translation: "ホテルは追加のボトル入り水に対して、私たちに料金を請求しなかった。", targetMatch: "charge.*for|charged" },
+            { id: 180, subject: "壁超えトレーニング", num: "161", word: "load A onto -", meaning: "Aを〜に積む", phrase: "load luggage onto the bus", phrase_translation: "荷物をバスに積み込む", example: "The workers began to load the heavy freight onto the shipping truck.", example_translation: "作業員たちは重い貨物を配送トラックに積み込み始めた。", targetMatch: "load" },
+            { id: 181, subject: "壁超えトレーニング", num: "161", word: "instruct", meaning: "指示する、教える ※受動態で指示される", phrase: "instruct staff to follow rules", phrase_translation: "規則に従うようスタッフに指示する", example: "We were instructed to wait in the main reception room until 2 PM.", example_translation: "私たちは午後2時まで主要応接室で待るよう指示された。", targetMatch: "instruct|instructed" },
+            { id: 182, subject: "壁超えトレーニング", num: "161", word: "reception", meaning: "受付、対応", phrase: "inquire at the front reception desk", phrase_translation: "フロントの受付カウンターで尋ねる", example: "The new product line received a very warm reception from users.", example_translation: "新しい製品シリーズは、ユーザーから非常に温かい反応[対応]を受けた。", targetMatch: "reception" },
+            { id: 183, subject: "壁超えトレーニング", num: "162", word: "urgently", meaning: "急いで、緊急に", phrase: "urgently need technical support", phrase_translation: "技術サポートを緊急に必要としている", example: "The medical supplies must be delivered urgently to the rural clinic.", example_translation: "医療用品は、田舎の診療所へ急いで届けられなければならない。", targetMatch: "urgently" },
+            { id: 184, subject: "壁超えトレーニング", num: "162", word: "let - down", meaning: "〜をがっかりさせる", phrase: "promise not to let the team down", phrase_translation: "チームをがっかりさせないと約束する", example: "I am sorry that our delayed response let you down so much.", example_translation: "私たちの対応の遅れが、あなたをこれほどがっかりさせてしまい申し訳ありません。", targetMatch: "let.*down" },
+            { id: 185, subject: "壁超えトレーニング", num: "162", word: "a couple of", meaning: "いくつかの、2〜3の", phrase: "finish the report in a couple of days", phrase_translation: "2〜3日で報告書を終わらせる", example: "There are a couple of points we need to clarify before the contract.", example_translation: "契約の前に、私たちが明確にする必要のあるいくつかの点があります。", targetMatch: "a couple of" },
+            { id: 186, subject: "壁超えトレーニング", num: "162", word: "malfunction", meaning: "正常に動作しない、不具合[名詞]", phrase: "The printer began to malfunction.", phrase_translation: "プリンターが正常に動作しなくなった。", example: "A technical malfunction caused the main server to shut down.", example_translation: "技術的な不具合により、メインサーバーがシャットダウンした。", targetMatch: "malfunction" },
+
+            // --- 金フレ苦手 (187〜196) ---
+            { id: 187, subject: "金フレ苦手", num: "-", word: "Executive", meaning: "重役の、役員用の、高級な", phrase: "visit the executive suite", phrase_translation: "役員用特別室を訪れる", example: "The executive board made the final choice regarding the acquisition.", example_translation: "役員会は買収に関する最終的な選択を行った。", targetMatch: "executive|Executive" },
+            { id: 188, subject: "金フレ苦手", num: "318", word: "institution", meaning: "大きな機関、施設、慣習", phrase: "a prestigious financial institution", phrase_translation: "名門の金融機関", example: "The educational institution offers extensive language tutorials.", example_translation: "その教育機関は、広範な言語個別指導を提供している。", targetMatch: "institution" },
+            { id: 189, subject: "金フレ苦手", num: "332", word: "corporation", meaning: "大企業、法人", phrase: "work for a multinational corporation", phrase_translation: "多国籍大企業で働く", example: "The local corporation generously funded the community wellness center.", example_translation: "その地元法人は、地域のウェルネスセンターに気前よく資金を提供した。", targetMatch: "corporation" },
+            { id: 190, subject: "金フレ苦手", num: "334", word: "permit", meaning: "許可証[可算名詞]、許可する", phrase: "obtain a valid parking permit", phrase_translation: "有効な駐車許可証を取得する", example: "The security regulation does not permit visitors to enter without a pass.", example_translation: "セキュリティ規則は、パスなしで訪問者が入ることを許可していません。", targetMatch: "permit" },
+            { id: 191, subject: "金フレ苦手", num: "341", word: "slightly", meaning: "わずかに、少し", phrase: "increase slightly this quarter", phrase_translation: "今四半期、わずかに増加する", example: "The schedule was adjusted slightly to accommodate the incoming speaker.", example_translation: "新任のスピーカーに合わせるために、スケジュールが少し調整された。", targetMatch: "slightly" },
+            { id: 192, subject: "金フレ苦手", num: "638", word: "assume", meaning: "思い込む、引き受ける、想定する", phrase: "assume full responsibility for the error", phrase_translation: "エラーに対する全責任を引き受ける", example: "Do not assume that the standard procedure is always correct.", example_translation: "標準的な手順が常に正しいと思い込んではいけない。", targetMatch: "assume" },
+            { id: 193, subject: "金フレ苦手", num: "645", word: "reveal", meaning: "明らかにする、漏らす", phrase: "reveal the secret design plans", phrase_translation: "秘密のデザイン計画を明らかにする", example: "The detailed assessment revealed several flaws in the operation.", example_translation: "詳細な評価により、事業におけるいくつかの欠陥が明らかになった。", targetMatch: "reveal|revealed" },
+            { id: 194, subject: "金フレ苦手", num: "655", word: "adequate", meaning: "十分な、適切な", phrase: "provide adequate training for staff", phrase_translation: "スタッフに十分な研修を提供する", example: "The current storage closet is not adequate for our inventory needs.", example_translation: "現在の保管クローゼットは、私たちの在庫のニーズに対して十分ではない。", targetMatch: "adequate" },
+            { id: 195, subject: "金フレ苦手", num: "659", word: "challenging", meaning: "やりがいのある、課題の多い", phrase: "undertake a challenging project", phrase_translation: "やりがいのあるプロジェクトを引き受ける", example: "Market conditions remain challenging for the local textile industry.", example_translation: "地元の繊維業界にとって、市場環境は依然として課題が多い。", targetMatch: "challenging" },
+            { id: 196, subject: "金フレ苦手", num: "683", word: "outlook", meaning: "物の見通し、見解、見晴らし", phrase: "positive economic outlook for next year", phrase_translation: "来年の前向きな経済見通し", example: "Her optimistic outlook on life always inspires the rest of the team.", example_translation: "彼女の人生に対する楽観的な見解は、常にチームの他のメンバーを鼓舞する。", targetMatch: "outlook" }
+        ];
+
+        // 状態管理
+        let weakWordIds = [];
+        let completedSections = [];
+        
+        try {
+            const rawWeak = localStorage.getItem('toeic_weak_words_v8');
+            if (rawWeak) weakWordIds = JSON.parse(rawWeak) || [];
+        } catch (e) {
+            console.warn("LocalStorage (weak words) fallback to memory: ", e);
+        }
+
+        try {
+            const rawCompleted = localStorage.getItem('toeic_completed_sections_v8');
+            if (rawCompleted) completedSections = JSON.parse(rawCompleted) || [];
+        } catch (e) {
+            console.warn("LocalStorage (completed sections) fallback to memory: ", e);
+        }
+
+        // 主題カテゴリ一覧
+        const subjects = ["公式問題集12", "壁超えトレーニング", "金フレ苦手"];
+        
+        // 10問ずつ自動的に細分化したセクションを構築
+        const sections = [];
+        const sectionSize = 10;
+
+        subjects.forEach(sub => {
+            const subWords = wordData.filter(w => w.subject === sub);
+            const numSecs = Math.ceil(subWords.length / sectionSize);
+            for (let i = 0; i < numSecs; i++) {
+                sections.push({
+                    id: sections.length, // 純粋な数値ID (onclickのエラーを完全に防ぐ)
+                    subject: sub,
+                    index: i + 1,
+                    words: subWords.slice(i * sectionSize, (i + 1) * sectionSize)
+                });
+            }
+        });
+
+        let currentSection = null;
+        let currentQueue = [];
+        let currentIndex = 0;
+        let isWeakOnlyMode = false;
+        let currentCorrectCount = 0;
+        let currentWrongCount = 0;
+
+        // 音声認識オブジェクト
+        let synth = null;
+        try {
+            if (typeof window !== 'undefined' && window.speechSynthesis) {
+                synth = window.speechSynthesis;
+            }
+        } catch (e) {
+            console.warn("SpeechSynthesis is restricted: ", e);
+        }
+
+        // 初期化
+        function initApp() {
+            renderHome();
+        }
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initApp);
+        } else {
+            initApp();
+        }
+
+        // ハイライト正規表現のフォールバック付き適用
+        function applyHighlight(text, word, pattern) {
+            if (!text) return "";
+            const matchPattern = pattern || word;
+            try {
+                let regex;
+                if (!pattern) {
+                    const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    if (escapedWord.length <= 2) {
+                        regex = new RegExp(`\\b(${escapedWord})\\b`, 'gi');
+                    } else {
+                        regex = new RegExp(`(${escapedWord})`, 'gi');
+                    }
+                } else {
+                    if (matchPattern.length <= 2) {
+                        regex = new RegExp(`\\b(${matchPattern})\\b`, 'gi');
+                    } else {
+                        regex = new RegExp(`(${matchPattern})`, 'gi');
+                    }
+                }
+                
+                if (matchPattern.toLowerCase() === "or") {
+                    regex = /\b(or)\b/gi;
+                }
+                return text.replace(regex, `<span class="text-red-500 font-extrabold">$1</span>`);
+            } catch (e) {
+                const safeWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                return text.replace(new RegExp(safeWord, 'gi'), `<span class="text-red-500 font-extrabold">$&</span>`);
+            }
+        }
+
+        // ホーム画面の構築 (セクション10問細分化 + 主題グループ化)
+        function renderHome() {
+            const container = document.getElementById('sections-container');
+            const totalWordsEl = document.getElementById('total-words-count');
+            const totalWeakEl = document.getElementById('total-weak-count');
+            const totalMasteredEl = document.getElementById('total-mastered-sections');
+
+            if (totalWordsEl) totalWordsEl.innerText = wordData.length;
+            if (totalWeakEl) totalWeakEl.innerText = weakWordIds.length;
+
+            if (!container) return;
+            container.innerHTML = '';
+
+            let totalMastered = 0;
+
+            subjects.forEach(sub => {
+                const subSecs = sections.filter(s => s.subject === sub);
+                
+                // 主題別ヘッダーの描画
+                const headerDiv = document.createElement('div');
+                headerDiv.className = "mt-6 mb-4 pb-2 border-b-2 border-blue-100";
+                headerDiv.innerHTML = `
+                    <h3 class="text-lg font-black text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-folder-open text-blue-600"></i> ${sub}
+                        <span class="text-xs font-bold bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full">${subSecs.length} セクション</span>
+                    </h3>
+                `;
+                container.appendChild(headerDiv);
+
+                // 各セクションカード用グリッド
+                const grid = document.createElement('div');
+                grid.className = "grid gap-4 sm:grid-cols-2 md:grid-cols-3 mb-8";
+
+                subSecs.forEach(sec => {
+                    const weakCount = sec.words.filter(w => weakWordIds.includes(w.id)).length;
+                    const secKey = `sec_${sec.id}`;
+                    const isCompleted = completedSections.includes(secKey);
+
+                    let statusBadge = '';
+                    if (weakCount > 0) {
+                        statusBadge = `<span class="text-xs font-bold bg-red-100 text-red-600 px-2.5 py-1 rounded-full"><i class="fa-solid fa-triangle-exclamation"></i> 苦手: ${weakCount}問</span>`;
+                    } else if (isCompleted && weakCount === 0) {
+                        statusBadge = `<span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full"><i class="fa-solid fa-star text-amber-400"></i> マスター ✨</span>`;
+                        totalMastered++;
+                    } else {
+                        statusBadge = `<span class="text-xs font-bold bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full">未着手</span>`;
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-5 rounded-2xl border border-slate-100 custom-shadow flex flex-col justify-between hover:border-blue-200 transition duration-150";
+                    
+                    // クリックイベントの引数は「sec.id」という数値のみ。これによりクォーテーションの競合を100%防ぎます。
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="font-black text-slate-800 text-base">Section ${sec.index}</h4>
+                                <div>${statusBadge}</div>
+                            </div>
+                            <p class="text-xs text-slate-400 font-bold mb-4">
+                                収録: No.${sec.words[0].id}〜${sec.words[sec.words.length-1].id} (${sec.words.length}語)
+                            </p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mt-auto pt-2">
+                            <button onclick="startQuiz(${sec.id}, false)" class="col-span-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-2 rounded-xl text-xs shadow-sm transition duration-150 cursor-pointer text-center">
+                                <i class="fa-solid fa-play mr-1"></i> 解く
+                            </button>
+                            <button onclick="startQuiz(${sec.id}, true)" ${weakCount === 0 ? 'disabled' : ''} class="col-span-2 bg-red-50 hover:bg-red-100 disabled:opacity-40 disabled:hover:bg-red-50 text-red-600 font-bold py-2 rounded-xl text-xs border border-red-200 transition duration-150 cursor-pointer text-center">
+                                <i class="fa-solid fa-fire mr-1"></i> 苦手 (${weakCount})
+                            </button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+                container.appendChild(grid);
+            });
+
+            if (totalMasteredEl) totalMasteredEl.innerText = totalMastered;
+        }
+
+        // ビューの一括切り替え（画面要素をすべて隠す確実なロジック）
+        function switchView(viewId) {
+            document.getElementById('home-view').classList.add('hidden');
+            document.getElementById('quiz-view').classList.add('hidden');
+            document.getElementById('result-view').classList.add('hidden');
+            document.getElementById('header-actions').classList.add('hidden');
+
+            document.getElementById(viewId).classList.remove('hidden');
+            if (viewId === 'quiz-view') {
+                document.getElementById('header-actions').classList.remove('hidden');
+            }
+        }
+
+        // クイズ開始 (実証コードに基づいた確実な起動)
+        function startQuiz(sectionId, weakOnly) {
+            const sec = sections.find(s => s.id === sectionId);
+            if (!sec) {
+                alert("セクションデータの読み込みに失敗しました。");
+                return;
+            }
+
+            currentSection = sec;
+            isWeakOnlyMode = weakOnly;
+
+            let targetWords = sec.words;
+            if (weakOnly) {
+                targetWords = targetWords.filter(w => weakWordIds.includes(w.id));
+            }
+
+            if (targetWords.length === 0) {
+                alert("該当する問題がありません。");
+                return;
+            }
+
+            // 問題順のシャッフル
+            currentQueue = [...targetWords].sort(() => Math.random() - 0.5);
+            currentIndex = 0;
+            currentCorrectCount = 0;
+            currentWrongCount = 0;
+
+            // HTMLに復元された quiz-title の書き換え処理を安全に統合
+            const quizTitleEl = document.getElementById('quiz-title');
+            if (quizTitleEl) {
+                quizTitleEl.innerText = `Section ${sec.index}`;
+            }
+            
+            switchView('quiz-view');
+            showQuestion();
+        }
+
+        // クイズ問題表示
+        function showQuestion() {
+            const currentItem = currentQueue[currentIndex];
+
+            // 情報表示
+            document.getElementById('quiz-subject').innerText = currentItem.subject;
+            document.getElementById('quiz-number').innerText = currentItem.num !== "-" ? `No. ${currentItem.num}` : `No. ${currentItem.id}`;
+            document.getElementById('quiz-counter').innerText = `${currentIndex + 1} / ${currentQueue.length} 問目`;
+            
+            // 進捗バー
+            const progressPercent = (currentIndex / currentQueue.length) * 100;
+            document.getElementById('quiz-progress').style.width = `${progressPercent}%`;
+
+            // 出題エリア：赤字ハイライトを自動適用して埋め込み
+            const highlightedPhrase = applyHighlight(currentItem.phrase, currentItem.word, currentItem.targetMatch);
+            const highlightedExample = applyHighlight(currentItem.example, currentItem.word, currentItem.targetMatch);
+
+            document.getElementById('quiz-phrase-box').innerHTML = highlightedPhrase;
+            document.getElementById('quiz-example-box').innerHTML = highlightedExample;
+
+            // 答えエリアを非表示
+            document.getElementById('quiz-answer-section').classList.add('hidden');
+            document.getElementById('quiz-action-before').className = "block";
+            document.getElementById('quiz-action-after').className = "hidden";
+        }
+
+        // 答えを見る
+        function revealAnswer() {
+            const currentItem = currentQueue[currentIndex];
+
+            // 回答情報の埋め込み
+            document.getElementById('quiz-correct-meaning').innerText = currentItem.meaning;
+            document.getElementById('quiz-phrase-translation').innerText = currentItem.phrase_translation;
+            document.getElementById('quiz-example-translation').innerText = currentItem.example_translation;
+
+            // 表示切り替え
+            document.getElementById('quiz-answer-section').classList.remove('hidden');
+            document.getElementById('quiz-action-before').className = "hidden";
+            document.getElementById('quiz-action-after').className = "grid grid-cols-2 gap-4";
+
+            // ★要望に基づく修正: 「答えを見る」を押した後の自動音声再生（speakText）を無効化
+            // (ユーザーが「聴く」ボタンを手動で押したときのみ発音するようにしました)
+        }
+
+        // 判定
+        function submitJudgment(isCorrect) {
+            const currentItem = currentQueue[currentIndex];
+
+            if (isCorrect) {
+                currentCorrectCount++;
+                // 苦手から削除
+                weakWordIds = weakWordIds.filter(id => id !== currentItem.id);
+            } else {
+                currentWrongCount++;
+                // 苦手へ追加
+                if (!weakWordIds.includes(currentItem.id)) {
+                    weakWordIds.push(currentItem.id);
+                }
+            }
+
+            try {
+                localStorage.setItem('toeic_weak_words_v8', JSON.stringify(weakWordIds));
+            } catch (e) {
+                console.warn("LocalStorage保存スキップ: ", e);
+            }
+
+            currentIndex++;
+            if (currentIndex < currentQueue.length) {
+                showQuestion();
+            } else {
+                finishQuiz();
+            }
+        }
+
+        // クイズ終了
+        function finishQuiz() {
+            if (!isWeakOnlyMode && currentSection) {
+                // セクション内の単語に苦手が残っていなければ「マスター」とする
+                const hasAnyWeakLeft = currentSection.words.some(w => weakWordIds.includes(w.id));
+                const secKey = `sec_${currentSection.id}`;
+                
+                if (!hasAnyWeakLeft && !completedSections.includes(secKey)) {
+                    completedSections.push(secKey);
+                    try {
+                        localStorage.setItem('toeic_completed_sections_v8', JSON.stringify(completedSections));
+                    } catch (e) {
+                        console.warn("LocalStorage保存スキップ: ", e);
+                    }
+                }
+            }
+
+            const subjectMeta = currentSection ? currentSection.subject : '';
+            const indexMeta = currentSection ? currentSection.index : '';
+            document.getElementById('result-meta').innerText = `${subjectMeta} - Section ${indexMeta}`;
+            document.getElementById('result-correct').innerText = currentCorrectCount;
+            document.getElementById('result-wrong').innerText = currentWrongCount;
+
+            switchView('result-view');
+        }
+
+        // 中断して戻る
+        function confirmExit() {
+            if (confirm("現在のセクションの学習を中断して、ホーム画面に戻りますか？(今回の進捗は破棄されます)")) {
+                backToHome();
+            }
+        }
+
+        function backToHome() {
+            switchView('home-view');
+            renderHome();
+        }
+
+        // Web Speech API 音声合成 (ラグゼロ・自然速度)
+        function speakText(isWholePhrase) {
+            if (!synth) {
+                try {
+                    if (typeof window !== 'undefined' && window.speechSynthesis) {
+                        synth = window.speechSynthesis;
+                    }
+                } catch (e) {
+                    console.warn("SpeechSynthesis取得不可: ", e);
+                }
+            }
+
+            if (synth) {
+                try {
+                    synth.cancel();
+                } catch(e) {
+                    console.warn("音声キャンセル失敗: ", e);
+                }
+            } else {
+                return;
+            }
+
+            const currentItem = currentQueue[currentIndex];
+            let textToSpeak = isWholePhrase ? currentItem.phrase : currentItem.word;
+
+            // 記号や-ingなどのノイズの除去
+            textToSpeak = textToSpeak.replace(/-ing/g, "").replace(/\(.*?\)/g, "").trim();
+
+            try {
+                const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                utterance.lang = 'en-US';
+                utterance.rate = 1.0; 
+                synth.speak(utterance);
+            } catch (e) {
+                console.warn("音声再生に失敗しました: ", e);
+            }
+        }
+    </script>
+</body>
+</html>
